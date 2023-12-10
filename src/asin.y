@@ -166,21 +166,28 @@ instIter    : WHILE_ PARA_ expre PARC_
             inst
                     
             ;
-expre       : expreLogic {$$.t = $1.t;}
+expre       : expreLogic
             | ID_ ASIG_ expre
 
-            {
+            {   
+                printf("valor expresion: %d\n", $3.v);
                 SIMB sim = obtTdS($1);
                 if (sim.t == T_ERROR) {
                     yyerror("Objeto no declarado");
-                } else if (sim.t != $3.t)
+                } else if (!((sim.t != T_ENTERO || sim.t != T_LOGICO)  && ($3.t != T_ENTERO || $3.t != T_LOGICO))) // Verifica si son del mismo tipo  
                 {
-                    // Verifica si ya hubo un error en $1 o $3
-                    if (sim.t != T_ERROR && $3.t != T_ERROR)
-                    {
-                        yyerror("El identificador debe ser de tipo simple");
-                    }
+                    printf("tipo de la variable: %d\n", sim.t);
+                    printf("tipo de la expresion: %d\n", $3.t);
+                    // comprueba si ambos son tipo simple
+                    yyerror("El identificador debe ser de tipo simple");
                 }
+                
+                else if (sim.t != $3.t) //si son de tipos diferentes
+                {
+                        //si no son del mismo tipo
+                        yyerror("Error de tipos en la 'asignacion'");
+                    
+                } 
             }
 
 
@@ -207,7 +214,7 @@ expre       : expreLogic {$$.t = $1.t;}
 
             | ID_ PUNTO_ ID_ ASIG_ expre
             ;
-expreLogic  : expreIgual        {$$.t = $1.t;}
+expreLogic  : expreIgual
             | expreLogic opLogic expreIgual
                     {
                         $$.t = T_ERROR;
@@ -220,7 +227,7 @@ expreLogic  : expreIgual        {$$.t = $1.t;}
                         }
                     }
             ;
-expreIgual  : expreRel      {$$.t = $1.t;}
+expreIgual  : expreRel
             | expreIgual opIgual expreRel
                     {	
                         $$.t = T_ERROR;
@@ -236,7 +243,7 @@ expreIgual  : expreRel      {$$.t = $1.t;}
                         } 
                     }
             ;
-expreRel    : expreAd       {$$.t = $1.t;}
+expreRel    : expreAd
             | expreRel opRel expreAd
                     {
                         $$.t = T_ERROR;
@@ -249,7 +256,7 @@ expreRel    : expreAd       {$$.t = $1.t;}
                         }
                     }
             ;
-expreAd     : expreMul        {$$.t = $1.t;}
+expreAd     : expreMul
             | expreAd opAd expreMul
                     {
                         $$.t = T_ERROR;
@@ -262,7 +269,7 @@ expreAd     : expreMul        {$$.t = $1.t;}
                         }
                     }
             ;
-expreMul    : expreUna  {$$.t = $1.t;}
+expreMul    : expreUna
             | expreMul opMul expreUna
                     {
                         $$.t = T_ERROR;
@@ -275,7 +282,7 @@ expreMul    : expreUna  {$$.t = $1.t;}
                         }
                     }
             ;  
-expreUna    : expreSufi { $$ = $1; }
+expreUna    : expreSufi
             | opUna expreUna
 
             {  

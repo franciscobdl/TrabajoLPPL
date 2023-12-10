@@ -24,8 +24,7 @@
 %token <ident> ID_ STRUCT_
 %token <cent> CTE_
 %type <lista> listParamAct listParamForm paramForm
-%type <cent> tipoSimp opLogic opIgual opRel opAd opMul opUna opIncre listDecla decla 
-                  listCamp instEntSal instSelec declaFunc
+%type <cent> tipoSimp opLogic opIgual opRel opAd opMul opUna opIncre listDecla decla listCamp instEntSal instSelec declaFunc
 %type <texp> expre expreLogic expreIgual expreRel expreAd expreMul expreUna expreSufi const
 %%
 
@@ -45,7 +44,7 @@ programa
 listDecla   : decla { $$ = $1;}
             | listDecla decla { $$ = $1 + $2;}
             ;
-decla       : declaVar { $$ = 0;}
+decla       : declaVar { $$ = 0yy;}
             | declaFunc { $$ = $1;}
             ;
 declaVar    : tipoSimp ID_ PYC_ 
@@ -83,15 +82,27 @@ listCamp    : tipoSimp ID_ PYC_
                         else dvar += TALLA_TIPO_SIMPLE;}
             | listCamp tipoSimp ID_ PYC_
             ;
-declaFunc   : tipoSimp ID_ { niv++; cargaContexto(niv); } PARA_ paramForm PARC_ 
+declaFunc   : tipoSimp ID_ 
+                { 
+                    niv++; 
+                    cargaContexto(niv); 
+                    dvar = 0;
+
+                } PARA_ paramForm PARC_ 
 
                   { 
-                        if ( ! insTdS($2, FUNCION, $1, niv, 0, $5.ref) )
+                        if ( ! insTdS($2, FUNCION, $1, niv-1, 0, $5.ref) )
                         {yyerror ("Ya existe esta funcion");}
                         
                   }
 
             LLAVEA_ declaVarLocal listInst RETURN_ expre PYC_ LLAVEC_
+            {
+                  if ($1 != $12.t) yyerror("Error en el tipo de retorno de la funcion");
+                    descargaContexto(niv);
+                    niv--;
+                    dvar = $$;
+            }
 
             ;
 paramForm   : 

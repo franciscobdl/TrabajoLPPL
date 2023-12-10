@@ -51,7 +51,7 @@ decla       : declaVar { $$ = 0;}
 declaVar    : tipoSimp ID_ PYC_ 
 
                   { if ( ! insTdS($2, VARIABLE, $1, niv, dvar, 0) )
-                        yyerror ("Identificador repetido");
+                        yyerror ("Identificador variable repetido");
                         else dvar += TALLA_TIPO_SIMPLE;
                         }
 
@@ -65,23 +65,31 @@ declaVar    : tipoSimp ID_ PYC_
                   }
                   int refe = insTdA($1, numelem);
                   if ( ! insTdS($2, VARIABLE, T_ARRAY, niv, dvar, refe) )
-                  yyerror ("Identificador repetido");
+                  yyerror ("Identificador del array repetido");
                   else dvar += numelem * TALLA_TIPO_SIMPLE;
                   }
 
             | STRUCT_ LLAVEA_ listCamp LLAVEC_ ID_ PYC_
-
-
-
+            {
+                if ( ! insTdS($5, VARIABLE, $1, niv, dvar, 0) )
+                {yyerror ("Identificador estructura repetido");}
+                else dvar += TALLA_TIPO_SIMPLE;
+            }
             ;
 tipoSimp    : INT_   { $$ = T_ENTERO; }
             | BOOL_ { $$ = T_LOGICO; }
             ;
 listCamp    : tipoSimp ID_ PYC_
-                  { if ( ! insTdS($2, NULO, $1, niv, dvar, 0) )
+                  { if ( ! insTdS($2, VARIABLE, $1, niv, dvar, 0) )
                         yyerror ("Identificador repetido");
                         else dvar += TALLA_TIPO_SIMPLE;}
             | listCamp tipoSimp ID_ PYC_
+            {
+                if ( ! insTdS($3, VARIABLE, $2, niv, dvar, 0) )
+                {yyerror ("Nombre de campo repetido");}
+                else dvar += TALLA_TIPO_SIMPLE;
+
+            }
             ;
 declaFunc   : tipoSimp ID_ { niv++; cargaContexto(niv); } PARA_ paramForm PARC_ 
 
@@ -157,14 +165,11 @@ instSelec   : IF_ PARA_ expre PARC_ inst ELSE_ inst
                     }
              ;
 instIter    : WHILE_ PARA_ expre PARC_ 
-
-            {
+                    {
                         if ($3.t != T_ERROR)
                             if ($3.t != T_LOGICO) yyerror("La expresion del 'while' debe ser 'logica'.");
-            }
-
+                    }
             inst
-                    
             ;
 expre       : expreLogic {$$.t = $1.t;}
             | ID_ ASIG_ expre
@@ -173,14 +178,15 @@ expre       : expreLogic {$$.t = $1.t;}
                 SIMB sim = obtTdS($1);
                 if (sim.t == T_ERROR) {
                     yyerror("Objeto no declarado");
-                } else if (sim.t != $3.t)
-                {
+                } else {
                     // Verifica si ya hubo un error en $1 o $3
-                    if (sim.t != T_ERROR && $3.t != T_ERROR)
-                    {
-                        yyerror("El identificador debe ser de tipo simple");
+                    if (sim.t != T_ERROR || $3.t != T_ERROR) {
+                        if (sim.t != $3.t) {
+                            yyerror("Error de tipos en la 'asignacion'.");
+                        }
                     }
                 }
+                
             }
 
 
@@ -204,8 +210,23 @@ expre       : expreLogic {$$.t = $1.t;}
                     }                      
                 }
 		    }
-
             | ID_ PUNTO_ ID_ ASIG_ expre
+            {
+                SIMB sim = obtTdS($3);
+                if (sim.t == T_ERROR)
+                {
+                    yyerror("Campo no declarado");
+                } else
+                {
+                    // Verifica si ya hubo un error en $1 o $3
+                    if (sim.t != T_ERROR || $5.t != T_ERROR)
+                    {
+                        if (sim.t != $5.t) {
+                            yyerror("Error en la asignacion a una struct");
+                        }
+                    }
+                }
+            }
             ;
 expreLogic  : expreIgual        {$$.t = $1.t;}
             | expreLogic opLogic expreIgual
@@ -326,6 +347,14 @@ expreSufi   : const { $$ = $1; }
                 }
             }
             | ID_ PUNTO_ ID_
+            {
+                SIMB sim = obtTdS($3);
+                if (sim.t == T_ERROR)
+                {
+                    yyerror("Campo no declarado");
+                }
+                else{$$.t = sim.t;}
+            }
             | ID_ CORA_ expre CORC_
             {
                 SIMB sim = obtTdS($1);
@@ -336,15 +365,17 @@ expreSufi   : const { $$ = $1; }
                 } else {
                     // Verificar si la expresion (indice) es de tipo entero.
                     if ($3.t != T_ENTERO) {
-                        yyerror("La expresion dentro de los corchetes debe ser de tipo entero.");
+                        yyerror("El indice debe ser de tipo entero.");
                     } else 
                         { 
-                            $$.t = T_ENTERO;  // Tipo del elemento del array.
+                            DIM dim = obtTdA(sim.ref);
+                            $$.t = dim.telem;  // Tipo del elemento del array.
                         }
                     
                 }
             }
             | ID_ PARA_ paramAct PARC_
+
             ;
 const       : CTE_  {$$.t = T_ENTERO; $$.v = $1;}
             | TRUE_ {$$.t = T_LOGICO; $$.v = TRUE;}
